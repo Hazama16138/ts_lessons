@@ -1,3 +1,5 @@
+type Mode = 'normal' | 'hard';
+
 /**
  * 受け取った値を出力する
  * @param text
@@ -30,13 +32,23 @@ class HitAndBlow {
     private answer: string[] = [];
     // 試行回数の数値
     private tryCount = 0;
+    // ゲームの難易度
+    private readonly mode: Mode;
+
+    /**
+     * 初期設定
+     * @param mode
+     */
+    constructor(mode: Mode) {
+        this.mode = mode;
+    }
 
     /**
      * ゲームの初期設定
      */
     public setting() {
         // 回答の値の数
-        const answerLength = 3;
+        const answerLength = this.getAnswerLength();
 
         // 回答の値をランダムに生成する
         while (this.answer.length < answerLength) {
@@ -53,7 +65,17 @@ class HitAndBlow {
      * ゲーム実行処理
      */
     public async play() {
-        const inputArr = (await promptInput('「,」区切りで3つの数字を入力してください')).split(',');
+        const answerLength = this.getAnswerLength();
+        const inputArr = (await promptInput(`「,」区切りで${answerLength}つの数字を入力してください`)).split(',');
+
+        // バリデーションチェック
+        if (!this.validate(inputArr)) {
+            printLine('無効な入力です。');
+            await this.play();
+            return;
+        }
+
+        // hitとblowの数を判定
         const result = this.check(inputArr);
 
         if (result.hit !== this.answer.length) {
@@ -97,13 +119,43 @@ class HitAndBlow {
             blow: blowCount,
         }
     }
+
+    /**
+     * バリデーションチェック
+     * @param inputArr
+     * @private
+     */
+    private validate(inputArr: string[]) {
+        // 文字列の数が正しければtrue
+        const isLengthValid = inputArr.length === this.answer.length;
+        // 選択可能な文字列であればtrue
+        const isAllAnswerSourceOption = inputArr.every((val) => this.answerSource.includes(val));
+        // 重複がなければtrue
+        const isAllDifferentValues = inputArr.every((val, i) => inputArr.indexOf(val) === i);
+        return isLengthValid && isAllAnswerSourceOption && isAllDifferentValues;
+    }
+
+    /**
+     * 難易度に応じて、正解の値の個数を返す
+     * @private
+     */
+    private getAnswerLength() {
+        switch (this.mode) {
+            case 'normal':
+                return 3;
+            case 'hard':
+                return 4;
+            default:
+                throw new Error(`${this.mode} は無効なモードです。`);
+        }
+    }
 }
 
 /**
  * 実行処理
  */
 (async () => {
-    const hitAndBlow = new HitAndBlow();
+    const hitAndBlow = new HitAndBlow('hard');
     hitAndBlow.setting();
     await hitAndBlow.play();
     hitAndBlow.end();
